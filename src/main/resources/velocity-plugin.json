@@ -1,0 +1,8 @@
+{
+  "id": "gondalantivpn",
+  "name": "GondalAntiVPN",
+  "version": "1.0",
+  "authors": [ "ThatLukinhasGuy" ],
+  "dependencies": [],
+  "main": "dev.thatlukinhasguy.gondalantivpn.Main"
+}
