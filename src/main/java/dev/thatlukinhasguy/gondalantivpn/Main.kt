@@ -22,7 +22,7 @@ import java.io.FileWriter
 import java.io.IOException
 
 
-@Plugin(id = "gondalantivpn", name = "GondalAntiVPN", version = BuildConstants.VERSION)
+@Plugin(id = "gondalantivpn", name = "GondalAntiVPN", version = "1.0")
 class Main @Inject constructor(
         private val logger: Logger,
         private val server: ProxyServer
@@ -44,7 +44,8 @@ class Main @Inject constructor(
 
             val request = ApiRequest().check(ip)
 
-            if (GsonStorage(File("./plugins/GondalAntiVPN/whitelist/list.json")).isValuePresentInList("whitelist", event.player.username)) return@register
+            if (GsonStorage(File("./plugins/GondalAntiVPN/whitelist/list.json")).isValuePresentInList("userWhitelist", event.player.username)) return@register
+            if (GsonStorage(File("./plugins/GondalAntiVPN/whitelist/list.json")).isValuePresentInList("ipWhitelist", ip)) return@register
 
             if (request) {
                 val kickMessage = GsonStorage(File("./plugins/GondalAntiVPN/config.json")).getObjectValue("kickMessage").toString()
@@ -82,7 +83,7 @@ class Main @Inject constructor(
         if (!whitelistFile.exists()) {
             whitelistFile.parentFile.mkdirs()
             whitelistFile.createNewFile()
-            val whitelistData = WhitelistData(listOf())
+            val whitelistData = WhitelistData(listOf(), listOf())
             saveJsonToFile(whitelistFile, whitelistData)
         }
     }
@@ -100,4 +101,4 @@ class Main @Inject constructor(
 }
 
 data class ConfigData(val kickMessage: String, val discordWebhookEnabled: Boolean, val discordWebhookUrl: String)
-data class WhitelistData(val whitelist: List<String>)
+data class WhitelistData(val userWhitelist: List<String>, val ipWhitelist: List<String>)

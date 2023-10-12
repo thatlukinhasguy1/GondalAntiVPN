@@ -10,78 +10,90 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 
-class CommandImpl: SimpleCommand {
+class CommandImpl : SimpleCommand {
     override fun execute(invocation: Invocation?) {
         val source = invocation?.source()
         val args = invocation?.arguments()
-        if (args?.size !!< 3 && !args[0].equals("reload")) {
+
+        if (args?.size !!< 4) {
             source?.sendMessage(invalidUsageMessage())
             return
         }
 
         when (args[0]) {
-            "whitelist" -> {
-                when (args[1]) {
-                    "add" -> handleWhitelistAdd(source!!, args)
-                    "remove" -> handleWhitelistRemove(source!!, args)
-                    else -> source?.sendMessage(invalidUsageMessage())
+            "whitelist" -> when (args[1]) {
+                "ip" -> when (args[2]) {
+                    "add" -> handleWhitelistAdd(source!!, args, ip = true)
+                    "remove" -> handleWhitelistRemove(source!!, args, ip = true)
                 }
+                "user" -> when (args[2]) {
+                    "add" -> handleWhitelistAdd(source!!, args, ip = false)
+                    "remove" -> handleWhitelistRemove(source!!, args, ip = false)
+                }
+                else -> source?.sendMessage(invalidUsageMessage())
             }
             else -> source?.sendMessage(invalidUsageMessage())
         }
     }
 
     private fun invalidUsageMessage(): Component {
-        return Component.text("GondalAntiVPN", NamedTextColor.BLUE)
-                .append(Component.text(" » ", NamedTextColor.DARK_GRAY))
-                .append(Component.text("Invalid usage of the subcommands.", NamedTextColor.WHITE))
+        return createMessage("Invalid usage of the subcommands.")
     }
 
-    private fun handleWhitelistAdd(source: CommandSource, args: Array<String>) {
-        val userName = args[2]
+    private fun handleWhitelistAdd(source: CommandSource, args: Array<String>, ip: Boolean) {
+        val string = args[3]
 
-        if (GsonStorage(File("plugins/GondalAntiVPN/whitelist/list.json"))
-                        .isValuePresentInList("whitelist", userName)) {
-            source.sendMessage(successMessage("The username '$userName' is already in the whitelist."))
+        if (string.isBlank()) {
+            source.sendMessage(createMessage("Invalid usage of the subcommand."))
+            return
+        }
+
+        val storage = GsonStorage(File("plugins/GondalAntiVPN/whitelist/list.json"))
+
+        if (ip && storage.isValuePresentInList("ipWhitelist", string) ||
+                !ip && storage.isValuePresentInList("userWhitelist", string)
+        ) {
+            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} '$string' is already in the whitelist."))
             return
         }
 
         try {
-            GsonStorage(File("plugins/GondalAntiVPN/whitelist/list.json"))
-                    .appendValueToList("whitelist", userName)
-            source.sendMessage(successMessage("Successfully added '$userName' to the whitelist."))
+            storage.appendValueToList(if (ip) "ipWhitelist" else "userWhitelist", string)
+            source.sendMessage(createMessage("Successfully added '$string' to the whitelist."))
         } catch (e: IOException) {
-            source.sendMessage(errorMessage("There was an error while adding the user to the whitelist."))
+            source.sendMessage(createMessage("There was an error while adding the ${if (ip) "IP" else "username"} from the whitelist."))
             e.printStackTrace()
         }
     }
 
-    private fun handleWhitelistRemove(source: CommandSource, args: Array<String>) {
-        val userName = args[2]
+    private fun handleWhitelistRemove(source: CommandSource, args: Array<String>, ip: Boolean) {
+        val string = args[3]
 
-        if (!GsonStorage(File("plugins/GondalAntiVPN/whitelist/list.json"))
-                        .isValuePresentInList("whitelist", userName)) {
-            source.sendMessage(successMessage("The username '$userName' was never in the whitelist."))
+        if (string.isBlank()) {
+            source.sendMessage(createMessage("Invalid usage of the subcommand."))
+            return
+        }
+
+        val storage = GsonStorage(File("plugins/GondalAntiVPN/whitelist/list.json"))
+
+        if (ip && !storage.isValuePresentInList("ipWhitelist", string) ||
+                !ip && !storage.isValuePresentInList("userWhitelist", string)
+        ) {
+            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} '$string' isn't in the whitelist."))
             return
         }
 
         try {
-            GsonStorage(File("plugins/GondalAntiVPN/whitelist/list.json"))
-                    .removeValueFromList("whitelist", userName)
-            source.sendMessage(successMessage("Successfully removed '$userName' from the whitelist."))
+            storage.removeValueFromList(if (ip) "ipWhitelist" else "userWhitelist", string)
+            source.sendMessage(createMessage("Successfully removed '$string' from the whitelist."))
         } catch (e: IOException) {
-            source.sendMessage(errorMessage("There was an error while removing the user from the whitelist."))
+            source.sendMessage(createMessage("There was an error while removing the ${if (ip) "IP" else "username"} from the whitelist."))
             e.printStackTrace()
         }
     }
 
-    private fun successMessage(message: String): Component {
-        return Component.text("GondalAntiVPN", NamedTextColor.BLUE)
-                .append(Component.text(" » ", NamedTextColor.DARK_GRAY))
-                .append(Component.text(message, NamedTextColor.WHITE))
-    }
 
-    private fun errorMessage(message: String): Component {
+    private fun createMessage(message: String): Component {
         return Component.text("GondalAntiVPN", NamedTextColor.BLUE)
                 .append(Component.text(" » ", NamedTextColor.DARK_GRAY))
                 .append(Component.text(message, NamedTextColor.WHITE))
@@ -94,8 +106,9 @@ class CommandImpl: SimpleCommand {
     override fun suggestAsync(invocation: Invocation): CompletableFuture<List<String>> {
         val args = invocation.arguments()
         return when (args.size) {
-            0 or 1 -> CompletableFuture.completedFuture(listOf("whitelist"))
-            2 -> CompletableFuture.completedFuture(listOf("add", "remove"))
+            0, 1 -> CompletableFuture.completedFuture(listOf("whitelist"))
+            2 -> CompletableFuture.completedFuture(listOf("user", "ip"))
+            3 -> CompletableFuture.completedFuture(listOf("add", "remove"))
             else -> CompletableFuture.completedFuture(emptyList())
         }
     }
