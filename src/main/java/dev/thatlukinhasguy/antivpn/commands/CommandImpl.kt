@@ -51,6 +51,7 @@ class CommandImpl: SimpleCommand {
         source.sendMessage(createMessage("All commands:"))
         source.sendMessage(Component.text("§a- /antivpn purge: §fPurges the bad IP cache."))
         source.sendMessage(Component.text("§a- /antivpn whitelist <user/ip> <add/remove> <str>: §fHandles the whitelist methods."))
+        source.sendMessage(Component.text("§a- /antivpn help: §fShows this message."))
         return
     }
 
