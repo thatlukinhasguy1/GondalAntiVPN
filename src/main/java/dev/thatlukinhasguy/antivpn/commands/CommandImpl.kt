@@ -37,14 +37,14 @@ class CommandImpl: SimpleCommand {
     }
 
     private fun invalidUsageMessage(): Component {
-        return createMessage("Uso correto: §a/antivpn whitelist <user/ip> <add/remove> <str>")
+        return createMessage("Correct usage: §a/antivpn whitelist <user/ip> <add/remove> <str>")
     }
 
     private fun handleWhitelist(source: CommandSource, args: Array<String>, ip: Boolean, remove: Boolean) {
         val string = args[3]
 
         if (string.isEmpty()) {
-            source.sendMessage(createMessage("Uso correto: §a/antivpn whitelist <user/ip> <add/remove> <str>"))
+            source.sendMessage(createMessage("Correct usage: §a/antivpn whitelist <user/ip> <add/remove> <str>"))
             return
         }
 
@@ -53,24 +53,24 @@ class CommandImpl: SimpleCommand {
         if (ip && storage.isValuePresentInList("ipWhitelist", string ) && !remove ||
                 !ip && storage.isValuePresentInList("userWhitelist", string) && !remove
         ) {
-            source.sendMessage(createMessage("O ${if (ip) "IP" else "usuário"} §a$string§f já está na whitelist."))
+            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f is already in whitelist."))
             return
         }
 
         if (ip && !storage.isValuePresentInList("ipWhitelist", string ) && remove ||
                 !ip && !storage.isValuePresentInList("userWhitelist", string) && remove
         ) {
-            source.sendMessage(createMessage("O ${if (ip) "IP" else "username"} §a$string§f não está na whitelist."))
+            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f is not in whitelist."))
             return
         }
 
         if (remove) {
             try {
                 storage.removeValueFromList(if (ip) "ipWhitelist" else "userWhitelist", string)
-                source.sendMessage(createMessage("O ${if (ip) "IP" else "username"} §a$string§f foi removido da whitelist com sucesso!"))
+                source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f was successfully removed from the whitelist!"))
                 return
             } catch (e: IOException) {
-                source.sendMessage(createMessage("Ocorreu um erro ao tentar remover o §a${if (ip) "IP" else "usuário"}§f da whitelist."))
+                source.sendMessage(createMessage("A problem occurred while deleting the §a${if (ip) "IP" else "username"}§f from the whitelist."))
                 e.printStackTrace()
                 return
             }
@@ -78,10 +78,10 @@ class CommandImpl: SimpleCommand {
 
         try {
             storage.appendValueToList(if (ip) "ipWhitelist" else "userWhitelist", string)
-            source.sendMessage(createMessage("O ${if (ip) "IP" else "username"} §a$string§f foi adicionado à whitelist com sucesso!"))
+            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f was successfully added to the whitelist!"))
             return
         } catch (e: IOException) {
-            source.sendMessage(createMessage("Ocorreu um erro ao tentar adicionar o §a${if (ip) "IP" else "usuário"}§f à whitelist."))
+            source.sendMessage(createMessage("A problem occurred while adding the §a${if (ip) "IP" else "username"}§f to the whitelist."))
             e.printStackTrace()
             return
         }
