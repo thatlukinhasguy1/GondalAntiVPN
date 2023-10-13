@@ -1,7 +1,7 @@
 {
   "id": "antivpn",
   "name": "GondalAntiVPN",
-  "version": "1.3",
+  "version": "1.4",
   "authors": [ "ThatLukinhasGuy" ],
   "dependencies": [],
   "main": "dev.thatlukinhasguy.antivpn.Main"

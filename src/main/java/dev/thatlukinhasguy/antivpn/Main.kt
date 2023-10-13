@@ -23,7 +23,7 @@ import java.io.FileWriter
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 
-@Plugin(id = "antivpn", name = "GondalAntiVPN", version = "1.3")
+@Plugin(id = "antivpn", name = "GondalAntiVPN", version = "1.4")
 class Main @Inject constructor(
         private val logger: Logger,
         private val server: ProxyServer
