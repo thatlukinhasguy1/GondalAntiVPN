@@ -10,36 +10,36 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 
-class CommandImpl: SimpleCommand {
-    override fun execute(invocation: Invocation?) {
-        val source = invocation?.source()
-        val args = invocation?.arguments()
+class CommandImpl : SimpleCommand {
+    override fun execute(invocation: Invocation) {
+        val source = invocation.source()
+        val args = invocation.arguments()
 
         try {
-            if (args?.size != 4 && args!![0] != "purge" && args[0] != "help") {
-                source?.sendMessage(invalidUsageMessage())
+            if (args.size != 4 && args[0] != "purge" && args[0] != "help") {
+                source.sendMessage(invalidUsageMessage())
                 return
             }
         } catch (e: ArrayIndexOutOfBoundsException) {
-            source?.sendMessage(invalidUsageMessage())
+            source.sendMessage(invalidUsageMessage())
             return
         }
 
         when (args[0]) {
             "whitelist" -> when (args[1]) {
                 "ip" -> when (args[2]) {
-                    "add" -> handleWhitelist(source!!, args, ip = true, remove = false)
-                    "remove" -> handleWhitelist(source!!, args, ip = true, remove = true)
+                    "add" -> handleWhitelist(source, args, ip = true, remove = false)
+                    "remove" -> handleWhitelist(source, args, ip = true, remove = true)
                 }
                 "user" -> when (args[2]) {
-                    "add" -> handleWhitelist(source!!, args, ip = false, remove = false)
-                    "remove" -> handleWhitelist(source!!, args, ip = false, remove = true)
+                    "add" -> handleWhitelist(source, args, ip = false, remove = false)
+                    "remove" -> handleWhitelist(source, args, ip = false, remove = true)
                 }
-                else -> source?.sendMessage(invalidUsageMessage())
+                else -> source.sendMessage(invalidUsageMessage())
             }
-            "purge" -> handlePurge(source!!)
-            "help" -> handleHelp(source!!)
-            else -> source?.sendMessage(invalidUsageMessage())
+            "purge" -> handlePurge(source)
+            "help" -> handleHelp(source)
+            else -> source.sendMessage(invalidUsageMessage())
         }
     }
 
@@ -52,18 +52,15 @@ class CommandImpl: SimpleCommand {
         source.sendMessage(Component.text("§a- /antivpn purge: §fPurges the bad IP cache."))
         source.sendMessage(Component.text("§a- /antivpn whitelist <user/ip> <add/remove> <str>: §fHandles the whitelist methods."))
         source.sendMessage(Component.text("§a- /antivpn help: §fShows this message."))
-        return
     }
 
     private fun handlePurge(source: CommandSource) {
         try {
             GsonStorage(File("./plugins/AntiVPN/blacklist/list.json")).setListToEmpty("badIps")
             source.sendMessage(createMessage("Successfully purged the bad IP data!"))
-            return
         } catch (e: IOException) {
             source.sendMessage(createMessage("An error occurred while purging the bad IP data."))
             e.printStackTrace()
-            return
         }
     }
 
@@ -77,51 +74,45 @@ class CommandImpl: SimpleCommand {
 
         val storage = GsonStorage(File("plugins/AntiVPN/whitelist/list.json"))
 
-        if (ip && storage.isValuePresentInList("ipWhitelist", string ) && !remove ||
-                !ip && storage.isValuePresentInList("userWhitelist", string) && !remove
+        if ((ip && storage.isValuePresentInList("ipWhitelist", string) && !remove) ||
+            (!ip && storage.isValuePresentInList("userWhitelist", string) && !remove)
         ) {
-            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f is already in whitelist."))
+            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f is already in the whitelist."))
             return
         }
 
-        if (ip && !storage.isValuePresentInList("ipWhitelist", string ) && remove ||
-                !ip && !storage.isValuePresentInList("userWhitelist", string) && remove
+        if ((ip && !storage.isValuePresentInList("ipWhitelist", string) && remove) ||
+            (!ip && !storage.isValuePresentInList("userWhitelist", string) && remove)
         ) {
-            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f is not in whitelist."))
+            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f is not in the whitelist."))
             return
-        }
-
-        if (remove) {
-            try {
-                storage.removeValueFromList(if (ip) "ipWhitelist" else "userWhitelist", string)
-                source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f was successfully removed from the whitelist!"))
-                return
-            } catch (e: IOException) {
-                source.sendMessage(createMessage("A problem occurred while deleting the §a${if (ip) "IP" else "username"}§f from the whitelist."))
-                e.printStackTrace()
-                return
-            }
         }
 
         try {
-            storage.appendValueToList(if (ip) "ipWhitelist" else "userWhitelist", string)
-            source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f was successfully added to the whitelist!"))
-            return
+            when {
+                remove -> {
+                    storage.removeValueFromList(if (ip) "ipWhitelist" else "userWhitelist", string)
+                    source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f was successfully removed from the whitelist!"))
+                }
+                else -> {
+                    storage.appendValueToList(if (ip) "ipWhitelist" else "userWhitelist", string)
+                    source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f was successfully added to the whitelist!"))
+                }
+            }
         } catch (e: IOException) {
-            source.sendMessage(createMessage("A problem occurred while adding the §a${if (ip) "IP" else "username"}§f to the whitelist."))
+            source.sendMessage(createMessage("A problem occurred while ${if (remove) "deleting" else "adding"} the §a${if (ip) "IP" else "username"}§f to the whitelist."))
             e.printStackTrace()
-            return
         }
     }
 
     private fun createMessage(message: String): Component {
         return Component.text("AntiVPN", NamedTextColor.BLUE)
-                .append(Component.text(" » ", NamedTextColor.DARK_GRAY))
-                .append(Component.text(message, NamedTextColor.WHITE))
+            .append(Component.text(" » ", NamedTextColor.DARK_GRAY))
+            .append(Component.text(message, NamedTextColor.WHITE))
     }
 
     override fun hasPermission(invocation: Invocation): Boolean {
-        return invocation.source().hasPermission("dev.thatlukinhasguy.AntiVPN.reload")
+        return invocation.source().hasPermission("dev.thatlukinhasguy.antivpn")
     }
 
     override fun suggestAsync(invocation: Invocation): CompletableFuture<List<String>> {
@@ -129,13 +120,12 @@ class CommandImpl: SimpleCommand {
         return when {
             args.isEmpty() -> CompletableFuture.completedFuture(listOf("whitelist", "purge", "help"))
             args[0] == "whitelist" -> when (args.size) {
-                1 -> CompletableFuture.completedFuture(listOf("user", "ip"))
-                2 -> CompletableFuture.completedFuture(listOf("user", "ip"))
+                1, 2 -> CompletableFuture.completedFuture(listOf("user", "ip"))
                 3 -> CompletableFuture.completedFuture(listOf("add", "remove"))
                 4 -> CompletableFuture.completedFuture(listOf("<value>"))
-                else -> CompletableFuture.completedFuture(mutableListOf())
+                else -> CompletableFuture.completedFuture(emptyList())
             }
-            else -> CompletableFuture.completedFuture(mutableListOf())
+            else -> CompletableFuture.completedFuture(emptyList())
         }
     }
 }

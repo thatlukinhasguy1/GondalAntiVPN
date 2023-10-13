@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST")
+
 package dev.thatlukinhasguy.antivpn.storage
 
 import com.google.gson.GsonBuilder
@@ -7,6 +9,9 @@ import java.io.FileReader
 import java.io.FileWriter
 import java.io.IOException
 
+/**
+ * GsonStorage provides utility functions for handling JSON data using Gson library.
+ */
 class GsonStorage(private val jsonFilePath: File) {
 
     private val gson = GsonBuilder().setPrettyPrinting().create()
@@ -14,14 +19,14 @@ class GsonStorage(private val jsonFilePath: File) {
 
     private fun loadJsonFromFile(file: File): MutableMap<String, Any> {
         try {
-            if (jsonFilePath.exists()) {
+            if (file.exists()) {
                 FileReader(file).use { reader ->
                     val type = object : TypeToken<MutableMap<String, Any>>() {}.type
                     return gson.fromJson(reader, type) ?: mutableMapOf()
                 }
             }
         } catch (e: IOException) {
-            e.printStackTrace()
+            println("Error reading from file: ${e.message}")
         }
         return mutableMapOf()
     }
@@ -32,7 +37,7 @@ class GsonStorage(private val jsonFilePath: File) {
                 gson.toJson(data, writer)
             }
         } catch (e: IOException) {
-            e.printStackTrace()
+            println("Error writing to file: ${e.message}")
         }
     }
 
