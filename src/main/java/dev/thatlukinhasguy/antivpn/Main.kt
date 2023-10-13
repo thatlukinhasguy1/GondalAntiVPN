@@ -21,15 +21,16 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
+import java.util.concurrent.CompletableFuture
 
-
-@Plugin(id = "antivpn", name = "GondalAntiVPN", version = "1.2")
+@Plugin(id = "antivpn", name = "GondalAntiVPN", version = "1.3")
 class Main @Inject constructor(
         private val logger: Logger,
         private val server: ProxyServer
 ) {
     private val configPath = "./plugins/AntiVPN/config.json"
     private val whitelistPath = "./plugins/AntiVPN/whitelist/list.json"
+    private val blacklistPath = "./plugins/AntiVPN/blacklist/list.json"
 
     @Subscribe
     fun onProxyInitialization(event: ProxyInitializeEvent?) {
@@ -45,14 +46,43 @@ class Main @Inject constructor(
                 val ip = event.connection.remoteAddress.address.hostAddress
                 val whitelist = GsonStorage(File(whitelistPath))
                 val config = GsonStorage(File(configPath))
+                val blacklist = GsonStorage(File(blacklistPath))
                 val kickMessage = config.getObjectValue("kickMessage").toString()
 
                 if (whitelist.isValuePresentInList("userWhitelist", event.username) || whitelist.isValuePresentInList("ipWhitelist", ip)) {
                     return@register
                 }
 
-                if (ApiRequest.check(ip)) {
+                if (blacklist.isValuePresentInList("badIps", ip)) {
                     event.result = PreLoginEvent.PreLoginComponentResult.denied(Component.text(kickMessage.replace("&", "§")))
+                    if (config.getObjectValue("discordWebhookEnabled") == true) {
+                        val webhookUrl = config.getObjectValue("discordWebhookUrl").toString()
+                        if (webhookUrl.isBlank()) {
+                            return@register
+                        }
+                        val webhook = DiscordWebhook(webhookUrl)
+                        webhook.addEmbed(
+                            DiscordWebhook.EmbedObject()
+                                .setTitle("VPN/Proxy detectado!")
+                                .addField("**Usuário:**", event.username, false)
+                                .addField("**IP:**", ip, false)
+                                .setFooter(
+                                    "AntiVPN por ThatLukinhasGuy",
+                                    "https://static.wikia.nocookie.net/minecraft/images/8/8d/BarrierNew.png"
+                                )
+                                .setColor(Color.BLACK)
+                        )
+                        webhook.execute()
+                        return@register
+                    }
+                    return@register
+                }
+
+                val check = CompletableFuture.completedFuture(ApiRequest.check(ip)).get()
+
+                if (check) {
+                    event.result = PreLoginEvent.PreLoginComponentResult.denied(Component.text(kickMessage.replace("&", "§")))
+                    blacklist.appendValueToList("badIps", ip)
                     if (config.getObjectValue("discordWebhookEnabled") == true) {
                         val webhookUrl = config.getObjectValue("discordWebhookUrl").toString()
                         if (webhookUrl.isBlank()) {
@@ -67,6 +97,7 @@ class Main @Inject constructor(
                                 .setColor(Color.BLACK)
                         )
                         webhook.execute()
+                        return@register
                     }
                 }
             }
@@ -77,7 +108,8 @@ class Main @Inject constructor(
     }
 
     private fun setupConfig() {
-        createIfNotExists(configPath, ConfigData(kickMessage = "&cDesative sua VPN/Proxy!", discordWebhookEnabled = false, discordWebhookUrl = ""))
+        createIfNotExists(configPath, ConfigData(kickMessage = "&Turn your VPN/Proxy off!", discordWebhookEnabled = false, discordWebhookUrl = ""))
+        createIfNotExists(blacklistPath, BlacklistData(listOf()))
         createIfNotExists(whitelistPath, WhitelistData(listOf(), listOf()))
     }
 
@@ -104,3 +136,4 @@ class Main @Inject constructor(
 
 data class ConfigData( val kickMessage: String, val discordWebhookEnabled: Boolean, val discordWebhookUrl: String)
 data class WhitelistData(val userWhitelist: List<String>, val ipWhitelist: List<String>)
+data class BlacklistData(val badIps: List<String>)

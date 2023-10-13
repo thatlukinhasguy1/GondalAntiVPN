@@ -57,4 +57,9 @@ class GsonStorage(private val jsonFilePath: File) {
         data[key] = list
         saveJsonToFile()
     }
+
+    fun setListToEmpty(key: String) {
+        data[key] = mutableListOf<Any>()
+        saveJsonToFile()
+    }
 }

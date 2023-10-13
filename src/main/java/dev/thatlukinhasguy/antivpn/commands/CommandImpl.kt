@@ -15,7 +15,7 @@ class CommandImpl: SimpleCommand {
         val source = invocation?.source()
         val args = invocation?.arguments()
 
-        if (args?.size != 4) {
+        if (args?.size != 4 && args!![0] != "purge") {
             source?.sendMessage(invalidUsageMessage())
             return
         }
@@ -32,12 +32,25 @@ class CommandImpl: SimpleCommand {
                 }
                 else -> source?.sendMessage(invalidUsageMessage())
             }
+            "purge" -> handlePurge(source!!)
             else -> source?.sendMessage(invalidUsageMessage())
         }
     }
 
     private fun invalidUsageMessage(): Component {
         return createMessage("Correct usage: §a/antivpn whitelist <user/ip> <add/remove> <str>")
+    }
+
+    private fun handlePurge(source: CommandSource) {
+        try {
+            GsonStorage(File("./plugins/AntiVPN/blacklist/list.json")).setListToEmpty("badIps")
+            source.sendMessage(createMessage("Successfully purged the bad IP data!"))
+            return
+        } catch (e: IOException) {
+            source.sendMessage(createMessage("An error occurred while purging the bad IP data."))
+            e.printStackTrace()
+            return
+        }
     }
 
     private fun handleWhitelist(source: CommandSource, args: Array<String>, ip: Boolean, remove: Boolean) {
@@ -100,7 +113,7 @@ class CommandImpl: SimpleCommand {
     override fun suggestAsync(invocation: Invocation): CompletableFuture<List<String>> {
         val args = invocation.arguments()
         return when (args.size) {
-            0, 1 -> CompletableFuture.completedFuture(listOf("whitelist"))
+            0, 1 -> CompletableFuture.completedFuture(listOf("whitelist", "purge"))
             2 -> CompletableFuture.completedFuture(listOf("user", "ip"))
             3 -> CompletableFuture.completedFuture(listOf("add", "remove"))
             else -> CompletableFuture.completedFuture(emptyList())
