@@ -71,8 +71,8 @@ class Main @Inject constructor(
     }
 
     private fun handleWebhook(config: GsonStorage, event: PreLoginEvent, ip: String) {
-        if (config.getObjectValue("discordWebhookEnabled") == true) {
-            val webhookUrl = config.getObjectValue("discordWebhookUrl").toString()
+        if (config.getObjectValue("discordWebhook.enabled") == true) {
+            val webhookUrl = config.getObjectValue("discordWebhook.url").toString()
             if (webhookUrl.isNotBlank()) {
                 val webhook = WebhookUtil(webhookUrl)
                 webhook.addEmbed(
@@ -120,6 +120,8 @@ class Main @Inject constructor(
     }
 }
 
-data class ConfigData(val api: Map<String, Map<String, Any>> = mapOf("ipHub" to mapOf("enabled" to true), "ipApi" to mapOf("enabled" to false), "proxyCheck" to mapOf("enabled" to false, "apiKey" to "")), val kickMessage: String = "&cTurn your VPN/Proxy off!", val discordWebhookEnabled: Boolean = false, val discordWebhookUrl: String = "")
+data class ConfigData(val kickMessage: String = "&cTurn your VPN/Proxy off!",
+                      val api: Map<String, Map<String, Any>> = mapOf("ipHub" to mapOf("enabled" to true), "ipApi" to mapOf("enabled" to false), "proxyCheck" to mapOf("enabled" to false, "apiKey" to "")),
+                      val discordWebhook: Map<String, Any> = mapOf("enabled" to false, "url" to ""))
 data class WhitelistData(val userWhitelist: List<String> = listOf(), val ipWhitelist: List<String> = listOf())
 data class BlacklistData(val badIps: List<String> = listOf())
