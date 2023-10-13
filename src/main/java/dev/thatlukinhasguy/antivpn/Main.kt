@@ -34,13 +34,13 @@ class Main @Inject constructor(
     @Subscribe
     fun onProxyInitialization(event: ProxyInitializeEvent?) {
         try {
-            logger.info("Criando os arquivos de configuração se os mesmos não existem...")
+            logger.info("Creating the config files if they are not present...")
             setupConfig()
-            logger.info("Registrando os comandos...")
+            logger.info("Registering the commands...")
             val commandManager: CommandManager = server.commandManager
             val commandMeta = commandManager.metaBuilder("antivpn").plugin(server).build()
             commandManager.register(commandMeta, CommandImpl())
-            logger.info("Registrando os eventos...")
+            logger.info("Registering the events...")
             server.eventManager.register(this, PreLoginEvent::class.java) { event ->
                 val ip = event.connection.remoteAddress.address.hostAddress
                 val whitelist = GsonStorage(File(whitelistPath))
@@ -70,7 +70,7 @@ class Main @Inject constructor(
                     }
                 }
             }
-            logger.info("Tudo pronto!")
+            logger.info("All done!")
         } catch (e: IOException) {
             logger.error(e.toString())
         }
