@@ -15,7 +15,12 @@ class CommandImpl: SimpleCommand {
         val source = invocation?.source()
         val args = invocation?.arguments()
 
-        if (args?.size != 4 && args!![0] != "purge") {
+        try {
+            if (args?.size != 4 && args!![0] != "purge" && args[0] != "help") {
+                source?.sendMessage(invalidUsageMessage())
+                return
+            }
+        } catch (e: ArrayIndexOutOfBoundsException) {
             source?.sendMessage(invalidUsageMessage())
             return
         }
@@ -33,12 +38,20 @@ class CommandImpl: SimpleCommand {
                 else -> source?.sendMessage(invalidUsageMessage())
             }
             "purge" -> handlePurge(source!!)
+            "help" -> handleHelp(source!!)
             else -> source?.sendMessage(invalidUsageMessage())
         }
     }
 
     private fun invalidUsageMessage(): Component {
-        return createMessage("Correct usage: §a/antivpn whitelist <user/ip> <add/remove> <str>")
+        return createMessage("Correct usage: §a/antivpn purge §for §a/antivpn whitelist <user/ip> <add/remove> <str>")
+    }
+
+    private fun handleHelp(source: CommandSource) {
+        source.sendMessage(createMessage("All commands:"))
+        source.sendMessage(Component.text("§a- /antivpn purge: §fPurges the bad IP cache."))
+        source.sendMessage(Component.text("§a- /antivpn whitelist <user/ip> <add/remove> <str>: §fHandles the whitelist methods."))
+        return
     }
 
     private fun handlePurge(source: CommandSource) {
@@ -113,7 +126,7 @@ class CommandImpl: SimpleCommand {
     override fun suggestAsync(invocation: Invocation): CompletableFuture<List<String>> {
         val args = invocation.arguments()
         return when (args.size) {
-            0, 1 -> CompletableFuture.completedFuture(listOf("whitelist", "purge"))
+            0, 1 -> CompletableFuture.completedFuture(listOf("whitelist", "purge", "help"))
             2 -> CompletableFuture.completedFuture(listOf("user", "ip"))
             3 -> CompletableFuture.completedFuture(listOf("add", "remove"))
             else -> CompletableFuture.completedFuture(emptyList())
