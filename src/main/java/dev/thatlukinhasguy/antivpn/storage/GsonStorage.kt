@@ -37,7 +37,18 @@ class GsonStorage(private val jsonFilePath: File) {
     }
 
     fun getObjectValue(key: String): Any? {
-        return data[key]
+        val keyList = key.split(".")
+        var result: Any = data
+
+        for (k in keyList) {
+            if (result is Map<*, *>) {
+                result = result[k] ?: return null
+            } else {
+                return null
+            }
+        }
+
+        return result
     }
 
     fun isValuePresentInList(key: String, value: Any): Boolean {

@@ -44,7 +44,7 @@ class CommandImpl: SimpleCommand {
     }
 
     private fun invalidUsageMessage(): Component {
-        return createMessage("Correct usage: §a/antivpn purge §for §a/antivpn whitelist <user/ip> <add/remove> <str>")
+        return createMessage("Correct usage: §a/antivpn purge §for §a/antivpn whitelist <user/ip> <add/remove> <value>")
     }
 
     private fun handleHelp(source: CommandSource) {
@@ -126,11 +126,16 @@ class CommandImpl: SimpleCommand {
 
     override fun suggestAsync(invocation: Invocation): CompletableFuture<List<String>> {
         val args = invocation.arguments()
-        return when (args.size) {
-            0, 1 -> CompletableFuture.completedFuture(listOf("whitelist", "purge", "help"))
-            2 -> CompletableFuture.completedFuture(listOf("user", "ip"))
-            3 -> CompletableFuture.completedFuture(listOf("add", "remove"))
-            else -> CompletableFuture.completedFuture(emptyList())
+        return when {
+            args.isEmpty() -> CompletableFuture.completedFuture(listOf("whitelist", "purge", "help"))
+            args[0] == "whitelist" -> when (args.size) {
+                1 -> CompletableFuture.completedFuture(listOf("user", "ip"))
+                2 -> CompletableFuture.completedFuture(listOf("user", "ip"))
+                3 -> CompletableFuture.completedFuture(listOf("add", "remove"))
+                4 -> CompletableFuture.completedFuture(listOf("<value>"))
+                else -> CompletableFuture.completedFuture(mutableListOf())
+            }
+            else -> CompletableFuture.completedFuture(mutableListOf())
         }
     }
 }

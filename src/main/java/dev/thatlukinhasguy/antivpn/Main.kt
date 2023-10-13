@@ -108,7 +108,7 @@ class Main @Inject constructor(
     }
 
     private fun setupConfig() {
-        createIfNotExists(configPath, ConfigData(kickMessage = "&Turn your VPN/Proxy off!", discordWebhookEnabled = false, discordWebhookUrl = ""))
+        createIfNotExists(configPath, ConfigData(api = mapOf("ipHub" to true, "ipApi" to false), kickMessage = "&cTurn your VPN/Proxy off!", discordWebhookEnabled = false, discordWebhookUrl = ""))
         createIfNotExists(blacklistPath, BlacklistData(listOf()))
         createIfNotExists(whitelistPath, WhitelistData(listOf(), listOf()))
     }
@@ -134,6 +134,6 @@ class Main @Inject constructor(
     }
 }
 
-data class ConfigData( val kickMessage: String, val discordWebhookEnabled: Boolean, val discordWebhookUrl: String)
+data class ConfigData(val api: Map<String, Boolean>, val kickMessage: String, val discordWebhookEnabled: Boolean, val discordWebhookUrl: String)
 data class WhitelistData(val userWhitelist: List<String>, val ipWhitelist: List<String>)
 data class BlacklistData(val badIps: List<String>)
