@@ -7,7 +7,7 @@ import javax.net.ssl.HttpsURLConnection
 
 /**
  * Class used to execute Discord Webhooks with low effort
-*/
+ */
 class WebhookUtil(private val url: String) {
     private var content: String? = null
     private var username: String? = null

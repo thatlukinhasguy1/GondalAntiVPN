@@ -73,6 +73,7 @@ class CommandImpl : SimpleCommand {
         }
 
         val storage = GsonStorage(File("plugins/AntiVPN/whitelist/list.json"))
+        val blacklist = GsonStorage(File("plugins/AntiVPN/blacklist/list.json"))
 
         if ((ip && storage.isValuePresentInList("ipWhitelist", string) && !remove) ||
             (!ip && storage.isValuePresentInList("userWhitelist", string) && !remove)
@@ -96,7 +97,16 @@ class CommandImpl : SimpleCommand {
                 }
                 else -> {
                     storage.appendValueToList(if (ip) "ipWhitelist" else "userWhitelist", string)
+                    if (ip) {
+                        try {
+                            blacklist.removeValueFromList("badIps", string)
+                        } catch (e: IOException) {
+                            source.sendMessage(createMessage("The IP §a$string§f was successfully added to the whitelist!"))
+                            return
+                        }
+                    }
                     source.sendMessage(createMessage("The ${if (ip) "IP" else "username"} §a$string§f was successfully added to the whitelist!"))
+                    return
                 }
             }
         } catch (e: IOException) {

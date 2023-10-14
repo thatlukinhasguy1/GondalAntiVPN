@@ -1,29 +1,18 @@
-@file:Suppress("NAME_SHADOWING")
-
 package dev.thatlukinhasguy.antivpn
 
 import com.google.gson.GsonBuilder
 import com.google.inject.Inject
 import com.velocitypowered.api.command.CommandManager
 import com.velocitypowered.api.event.Subscribe
-import com.velocitypowered.api.event.connection.PreLoginEvent
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.plugin.Plugin
 import com.velocitypowered.api.proxy.ProxyServer
 import dev.thatlukinhasguy.antivpn.commands.CommandImpl
-import dev.thatlukinhasguy.antivpn.storage.GsonStorage
-import dev.thatlukinhasguy.antivpn.storage.YamlStorage
-import dev.thatlukinhasguy.antivpn.utils.ApiUtil
-import dev.thatlukinhasguy.antivpn.utils.WebhookUtil
-import net.kyori.adventure.text.Component
+import dev.thatlukinhasguy.antivpn.listener.PreLoginListener
 import org.slf4j.Logger
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
-import java.awt.Color
-import java.io.BufferedWriter
-import java.io.File
-import java.io.FileWriter
-import java.io.IOException
+import java.io.*
 
 @Plugin(id = "antivpn", name = "GondalAntiVPN", version = "1.6")
 class Main @Inject constructor(
@@ -44,73 +33,11 @@ class Main @Inject constructor(
             val commandMeta = commandManager.metaBuilder("antivpn").plugin(server).build()
             commandManager.register(commandMeta, CommandImpl())
             logger.info("Registering the events...")
-            server.eventManager.register(this, PreLoginEvent::class.java) { event ->
-                val ip = event.connection.remoteAddress.address.hostAddress
-                val whitelist = GsonStorage(File(whitelistPath))
-                val config = YamlStorage(File(configPath))
-                val blacklist = GsonStorage(File(blacklistPath))
-                val kickMessage = config.getObjectValue("kickMessage").toString()
-
-                if (whitelist.isValuePresentInList(
-                        "userWhitelist",
-                        event.username
-                    ) || whitelist.isValuePresentInList("ipWhitelist", ip)
-                ) {
-                    return@register
-                }
-
-                if (blacklist.isValuePresentInList("badIps", ip)) {
-                    handleBlacklist(event, config, kickMessage, ip)
-                    return@register
-                }
-
-                handleCheck(event, ip, config, blacklist, kickMessage)
-            }
+            server.eventManager.register(this, PreLoginListener())
             logger.info("All done!")
         } catch (e: IOException) {
             logger.error(e.toString())
         }
-    }
-
-    private fun handleCheck(
-        event: PreLoginEvent,
-        ip: String,
-        config: YamlStorage,
-        blacklist: GsonStorage,
-        kickMessage: String
-    ) {
-        val check = ApiUtil.check(ip)
-        if (check) {
-            event.result = PreLoginEvent.PreLoginComponentResult.denied(Component.text(kickMessage.replace("&", "§")))
-            blacklist.appendValueToList("badIps", ip)
-            handleWebhook(config, event, ip)
-        }
-    }
-
-    private fun handleWebhook(config: YamlStorage, event: PreLoginEvent, ip: String) {
-        if (config.getObjectValue("webhook.enabled") == true) {
-            val webhookUrl = config.getObjectValue("webhook.url").toString()
-            if (webhookUrl.isNotBlank()) {
-                val webhook = WebhookUtil(webhookUrl)
-                webhook.addEmbed(
-                    WebhookUtil.EmbedObject()
-                        .setTitle("VPN/Proxy detected!")
-                        .addField("**User:**", event.username, false)
-                        .addField("**IP:**", ip, false)
-                        .setFooter(
-                            "AntiVPN by ThatLukinhasGuy",
-                            "https://static.wikia.nocookie.net/minecraft/images/8/8d/BarrierNew.png"
-                        )
-                        .setColor(Color.BLACK)
-                )
-                webhook.execute()
-            }
-        }
-    }
-
-    private fun handleBlacklist(event: PreLoginEvent, config: YamlStorage, kickMessage: String, ip: String) {
-        event.result = PreLoginEvent.PreLoginComponentResult.denied(Component.text(kickMessage.replace("&", "§")))
-        handleWebhook(config, event, ip)
     }
 
     private fun setupConfig() {

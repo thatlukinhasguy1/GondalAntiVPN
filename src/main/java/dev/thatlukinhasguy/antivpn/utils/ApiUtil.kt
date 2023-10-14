@@ -59,7 +59,7 @@ object ApiUtil {
             }
             configYaml.getObjectValue("api.vpnApi.enabled") as Boolean -> {
                 val response = OkHttpClient().getResponse(vpnApiUrl)
-                val json = response?.let { JSONObject(it).getJSONObject(ip) }
+                val json = response?.let { JSONObject(it)}
                 json?.getBoolean("is_proxy") == true
             }
             else -> false
