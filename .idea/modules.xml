@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/AntiVPN.main.iml" filepath="$PROJECT_DIR$/.idea/modules/AntiVPN.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/GondalAntiVPN.main.iml" filepath="$PROJECT_DIR$/.idea/modules/GondalAntiVPN.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/SimpleAntiVPN.main.iml" filepath="$PROJECT_DIR$/.idea/modules/SimpleAntiVPN.main.iml" />
     </modules>
   </component>

@@ -1,34 +1,25 @@
-@file:Suppress("NAME_SHADOWING")
-
 package dev.thatlukinhasguy.antivpn
 
 import com.google.gson.GsonBuilder
 import com.google.inject.Inject
 import com.velocitypowered.api.command.CommandManager
 import com.velocitypowered.api.event.Subscribe
-import com.velocitypowered.api.event.connection.PreLoginEvent
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.plugin.Plugin
 import com.velocitypowered.api.proxy.ProxyServer
 import dev.thatlukinhasguy.antivpn.commands.CommandImpl
-import dev.thatlukinhasguy.antivpn.storage.GsonStorage
-import dev.thatlukinhasguy.antivpn.utils.ApiRequest
-import dev.thatlukinhasguy.antivpn.utils.DiscordWebhook
-import net.kyori.adventure.text.Component
+import dev.thatlukinhasguy.antivpn.listener.PreLoginListener
 import org.slf4j.Logger
-import java.awt.Color
-import java.io.BufferedWriter
-import java.io.File
-import java.io.FileWriter
-import java.io.IOException
-import java.util.concurrent.CompletableFuture
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.Yaml
+import java.io.*
 
-@Plugin(id = "antivpn", name = "GondalAntiVPN", version = "1.4")
+@Plugin(id = "antivpn", name = "GondalAntiVPN", version = "1.6")
 class Main @Inject constructor(
-        private val logger: Logger,
-        private val server: ProxyServer
+    private val logger: Logger,
+    private val server: ProxyServer
 ) {
-    private val configPath = "./plugins/AntiVPN/config.json"
+    private val configPath = "./plugins/AntiVPN/config.yml"
     private val whitelistPath = "./plugins/AntiVPN/whitelist/list.json"
     private val blacklistPath = "./plugins/AntiVPN/blacklist/list.json"
 
@@ -37,70 +28,8 @@ class Main @Inject constructor(
         try {
             logger.info("Creating the config files if they are not present...")
             setupConfig()
-            logger.info("Registering the commands...")
-            val commandManager: CommandManager = server.commandManager
-            val commandMeta = commandManager.metaBuilder("antivpn").plugin(server).build()
-            commandManager.register(commandMeta, CommandImpl())
-            logger.info("Registering the events...")
-            server.eventManager.register(this, PreLoginEvent::class.java) { event ->
-                val ip = event.connection.remoteAddress.address.hostAddress
-                val whitelist = GsonStorage(File(whitelistPath))
-                val config = GsonStorage(File(configPath))
-                val blacklist = GsonStorage(File(blacklistPath))
-                val kickMessage = config.getObjectValue("kickMessage").toString()
-
-                if (whitelist.isValuePresentInList("userWhitelist", event.username) || whitelist.isValuePresentInList("ipWhitelist", ip)) {
-                    return@register
-                }
-
-                if (blacklist.isValuePresentInList("badIps", ip)) {
-                    event.result = PreLoginEvent.PreLoginComponentResult.denied(Component.text(kickMessage.replace("&", "§")))
-                    if (config.getObjectValue("discordWebhookEnabled") == true) {
-                        val webhookUrl = config.getObjectValue("discordWebhookUrl").toString()
-                        if (webhookUrl.isBlank()) {
-                            return@register
-                        }
-                        val webhook = DiscordWebhook(webhookUrl)
-                        webhook.addEmbed(
-                            DiscordWebhook.EmbedObject()
-                                .setTitle("VPN/Proxy detectado!")
-                                .addField("**Usuário:**", event.username, false)
-                                .addField("**IP:**", ip, false)
-                                .setFooter(
-                                    "AntiVPN por ThatLukinhasGuy",
-                                    "https://static.wikia.nocookie.net/minecraft/images/8/8d/BarrierNew.png"
-                                )
-                                .setColor(Color.BLACK)
-                        )
-                        webhook.execute()
-                        return@register
-                    }
-                    return@register
-                }
-
-                val check = CompletableFuture.completedFuture(ApiRequest.check(ip)).get()
-
-                if (check) {
-                    event.result = PreLoginEvent.PreLoginComponentResult.denied(Component.text(kickMessage.replace("&", "§")))
-                    blacklist.appendValueToList("badIps", ip)
-                    if (config.getObjectValue("discordWebhookEnabled") == true) {
-                        val webhookUrl = config.getObjectValue("discordWebhookUrl").toString()
-                        if (webhookUrl.isBlank()) {
-                            return@register
-                        }
-                        val webhook = DiscordWebhook(webhookUrl)
-                        webhook.addEmbed(DiscordWebhook.EmbedObject()
-                                .setTitle("VPN/Proxy detectado!")
-                                .addField("**Usuário:**", event.username, false)
-                                .addField("**IP:**", ip, false)
-                                .setFooter("AntiVPN por ThatLukinhasGuy", "https://static.wikia.nocookie.net/minecraft/images/8/8d/BarrierNew.png")
-                                .setColor(Color.BLACK)
-                        )
-                        webhook.execute()
-                        return@register
-                    }
-                }
-            }
+            registerCommands()
+            registerEvents()
             logger.info("All done!")
         } catch (e: IOException) {
             logger.error(e.toString())
@@ -108,17 +37,60 @@ class Main @Inject constructor(
     }
 
     private fun setupConfig() {
-        createIfNotExists(configPath, ConfigData(api = mapOf("ipHub" to true, "ipApi" to false), kickMessage = "&cTurn your VPN/Proxy off!", discordWebhookEnabled = false, discordWebhookUrl = ""))
-        createIfNotExists(blacklistPath, BlacklistData(listOf()))
-        createIfNotExists(whitelistPath, WhitelistData(listOf(), listOf()))
+        createIfNotExists(configPath, getConfigData(), false)
+        createIfNotExists(blacklistPath, getBlacklistData(), true)
+        createIfNotExists(whitelistPath, getWhitelistData(), true)
     }
 
-    private fun createIfNotExists(filePath: String, data: Any) {
+    private fun createIfNotExists(filePath: String, data: Map<String, Any>, isJson: Boolean) {
         val file = File(filePath)
         if (!file.exists()) {
             file.parentFile.mkdirs()
             file.createNewFile()
-            saveJsonToFile(file, data)
+            if (isJson) {
+                saveJsonToFile(File(filePath), data)
+                return
+            }
+            saveYamlToFile(file, data)
+        }
+    }
+
+    private fun getConfigData(): Map<String, Any> {
+        return mapOf(
+            "kickMessage" to "&cTurn your VPN/Proxy off!",
+            "api" to mapOf(
+                "ipHub" to mapOf("enabled" to true),
+                "ipApi" to mapOf("enabled" to false),
+                "proxyCheck" to mapOf("enabled" to false, "apiKey" to ""),
+                "vpnApi" to mapOf("enabled" to false, "apiKey" to "")
+            ),
+            "webhook" to mapOf("enabled" to false, "url" to "")
+        )
+    }
+
+    private fun getBlacklistData(): Map<String, Any> {
+        return mapOf("badIps" to listOf<String>())
+    }
+
+    private fun getWhitelistData(): Map<String, Any> {
+        return mapOf("userWhitelist" to listOf(), "ipWhitelist" to listOf<String>())
+    }
+
+    private fun saveYamlToFile(file: File, data: Map<String, Any>) {
+        val dumperOptions = DumperOptions()
+        dumperOptions.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+        val yaml = Yaml(dumperOptions)
+        try {
+            FileWriter(file).use { writer ->
+                val configData = mapOf(
+                    "kickMessage" to data["kickMessage"],
+                    "api" to data["api"],
+                    "webhook" to data["webhook"]
+                )
+                yaml.dump(configData, writer)
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
     }
 
@@ -132,8 +104,16 @@ class Main @Inject constructor(
             e.printStackTrace()
         }
     }
-}
 
-data class ConfigData(val api: Map<String, Boolean>, val kickMessage: String, val discordWebhookEnabled: Boolean, val discordWebhookUrl: String)
-data class WhitelistData(val userWhitelist: List<String>, val ipWhitelist: List<String>)
-data class BlacklistData(val badIps: List<String>)
+    private fun registerCommands() {
+        logger.info("Registering the commands...")
+        val commandManager: CommandManager = server.commandManager
+        val commandMeta = commandManager.metaBuilder("antivpn").plugin(server).build()
+        commandManager.register(commandMeta, CommandImpl())
+    }
+
+    private fun registerEvents() {
+        logger.info("Registering the events...")
+        server.eventManager.register(this, PreLoginListener())
+    }
+}
