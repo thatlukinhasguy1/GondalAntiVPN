@@ -12,43 +12,40 @@ import java.io.File
 
 class PreLoginListener {
 
-    private val configPath = "./plugins/AntiVPN/config.yml"
-    private val whitelistPath = "./plugins/AntiVPN/whitelist/list.json"
-    private val blacklistPath = "./plugins/AntiVPN/blacklist/list.json"
+    private val configFilePath = "./plugins/AntiVPN/config.yml"
+    private val whitelistFilePath = "./plugins/AntiVPN/whitelist/list.json"
+    private val blacklistFilePath = "./plugins/AntiVPN/blacklist/list.json"
+
     @Subscribe
     fun onPreLogin(event: PreLoginEvent) {
-        val ip = event.connection.remoteAddress.address.hostAddress
-        val whitelist = GsonStorage(File(whitelistPath))
-        val config = YamlStorage(File(configPath))
-        val blacklist = GsonStorage(File(blacklistPath))
+        val ipAddress = event.connection.remoteAddress.address.hostAddress
+        val whitelist = GsonStorage(File(whitelistFilePath))
+        val config = YamlStorage(File(configFilePath))
+        val blacklist = GsonStorage(File(blacklistFilePath))
         val kickMessage = config.getObjectValue("kickMessage").toString()
 
-        if (whitelist.isValuePresentInList(
-                "userWhitelist",
-                event.username
-            ) || whitelist.isValuePresentInList("ipWhitelist", ip)
-        ) {
+        if (whitelist.isValuePresentInList("userWhitelist", event.username) || whitelist.isValuePresentInList("ipWhitelist", ipAddress)) {
             return
         }
 
-        if (blacklist.isValuePresentInList("badIps", ip)) {
+        if (blacklist.isValuePresentInList("badIps", ipAddress)) {
             event.result = PreLoginEvent.PreLoginComponentResult.denied(Component.text(kickMessage.replace("&", "§")))
-            handleWebhook(config, event, ip)
+            handleWebhook(config, event, ipAddress)
             return
         }
 
-        val check = ApiUtil.check(ip)
-        if (check) {
+        val isVpnDetected = ApiUtil.check(ipAddress)
+        if (isVpnDetected) {
             event.result = PreLoginEvent.PreLoginComponentResult.denied(Component.text(kickMessage.replace("&", "§")))
-            blacklist.appendValueToList("badIps", ip)
-            handleWebhook(config, event, ip)
+            blacklist.appendValueToList("badIps", ipAddress)
+            handleWebhook(config, event, ipAddress)
             return
         }
-        whitelist.appendValueToList("ipWhitelist", ip)
+        whitelist.appendValueToList("ipWhitelist", ipAddress)
         return
     }
 
-    private fun handleWebhook(config: YamlStorage, event: PreLoginEvent, ip: String) {
+    private fun handleWebhook(config: YamlStorage, event: PreLoginEvent, ipAddress: String) {
         if (config.getObjectValue("webhook.enabled") == true) {
             val webhookUrl = config.getObjectValue("webhook.url").toString()
             if (webhookUrl.isNotBlank()) {
@@ -57,7 +54,7 @@ class PreLoginListener {
                     WebhookUtil.EmbedObject()
                         .setTitle("VPN/Proxy detected!")
                         .addField("**User:**", event.username, false)
-                        .addField("**IP:**", ip, false)
+                        .addField("**IP:**", ipAddress, false)
                         .setFooter(
                             "GondalAntiVPN by ThatLukinhasGuy",
                             "https://static.wikia.nocookie.net/minecraft/images/8/8d/BarrierNew.png"
